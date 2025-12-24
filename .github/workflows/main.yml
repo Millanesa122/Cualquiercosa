@@ -1,4 +1,4 @@
-name: Botsito
+name: BOT
 
 on:
   workflow_dispatch:
